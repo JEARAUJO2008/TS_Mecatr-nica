@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { InfoIcon, LockIcon, MailIcon, UserIcon, ShieldIcon } from "lucide-react"
+import { InfoIcon, LockIcon, MailIcon, UserIcon, ShieldIcon, AlertCircleIcon } from "lucide-react"
+import { verifyAdminPassword } from "@/lib/auth-actions"
+import { toast } from "sonner"
 
 interface AuthPageProps {
     onLogin: (role: "student" | "admin") => void
@@ -15,14 +17,48 @@ interface AuthPageProps {
 
 export function AuthPage({ onLogin }: AuthPageProps) {
     const [isLoading, setIsLoading] = useState(false)
+    const [credentials, setCredentials] = useState({ email: "", password: "" })
+    const [error, setError] = useState<string | null>(null)
 
-    const handleAuth = (role: "student" | "admin") => {
+    const handleAuth = async (role: "student" | "admin") => {
+        setError(null)
         setIsLoading(true)
-        // Simulate API call
-        setTimeout(() => {
-            onLogin(role)
-            setIsLoading(false)
-        }, 1000)
+
+        if (role === "admin") {
+            if (!credentials.password) {
+                setError("Por favor, ingresa la contraseña de administrador.")
+                setIsLoading(false)
+                return
+            }
+
+            try {
+                const result = await verifyAdminPassword(credentials.password)
+                if (result.success) {
+                    onLogin("admin")
+                    toast.success("Acceso concedido como Administrador")
+                } else {
+                    setError("Contraseña de administrador incorrecta.")
+                    toast.error("Acceso denegado")
+                }
+            } catch (err) {
+                setError("Ocurrió un error al verificar la contraseña.")
+                console.error(err)
+            } finally {
+                setIsLoading(false)
+            }
+        } else {
+            // Student logic (remains as simulation for now as requested)
+            setTimeout(() => {
+                onLogin("student")
+                setIsLoading(false)
+                toast.success("Acceso como Estudiante")
+            }, 800)
+        }
+    }
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target
+        setCredentials(prev => ({ ...prev, [id]: value }))
     }
 
     return (
@@ -53,18 +89,36 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
+                                {error && (
+                                    <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-1">
+                                        <AlertCircleIcon className="size-4" />
+                                        <AlertDescription>{error}</AlertDescription>
+                                    </Alert>
+                                )}
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Correo Institucional</Label>
                                     <div className="relative">
                                         <MailIcon className="absolute left-3 top-3 size-4 text-muted-foreground" />
-                                        <Input id="email" placeholder="nombre@unimecatronica.edu.co" className="pl-10" />
+                                        <Input
+                                            id="email"
+                                            placeholder="nombre@unimecatronica.edu.co"
+                                            className="pl-10"
+                                            value={credentials.email}
+                                            onChange={handleChange}
+                                        />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="password">Contraseña</Label>
                                     <div className="relative">
                                         <LockIcon className="absolute left-3 top-3 size-4 text-muted-foreground" />
-                                        <Input id="password" type="password" className="pl-10" />
+                                        <Input
+                                            id="password"
+                                            type="password"
+                                            className="pl-10"
+                                            value={credentials.password}
+                                            onChange={handleChange}
+                                        />
                                     </div>
                                 </div>
                             </CardContent>
